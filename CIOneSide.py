@@ -16,11 +16,11 @@ def CIobjUpper(x, alpha, Z, size, b, q):
     return obj
 
 def CILower(alpha, Z, size, b, q):
-    CIobj = lambda x: ((pvalRight(Z=Z, size=size, theta=x, b=b, q=q)) - alpha) ** 2
+    CIobj = lambda x: ((pvalRight(Z=Z, size=size, theta=x, b=b, q=q)) - alpha)
     L = minimize_scalar(fun=CIobj, method=custmin, bracket=(0, 1))    # args already set in CIobj
     return L.x
 
 def CIUpper(alpha, Z, size, b, q):
-    CIobj = lambda x: ((pvalRight(Z=Z, size=size, theta=x, b=b, q=q)) - (1-alpha)) ** 2
+    CIobj = lambda x: ((pvalRight(Z=Z, size=size, theta=x, b=b, q=q)) - (1-alpha))
     U = minimize_scalar(fun=CIobj, method=custmin, bracket=(0, 1))
     return U.x

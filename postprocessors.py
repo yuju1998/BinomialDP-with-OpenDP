@@ -12,9 +12,9 @@ from scipy.stats import binom
 from Tulap import ptulap
 import scipy
 
-def make_left_ump_test(VectorDomain[AllDomain[float]]):
+def make_ump_test(VectorDomain[AllDomain[float], AllDomain[str]]):
     
-    def function(theta, size, alpha, epsilon, delta):
+    def function(theta, size, alpha, epsilon, delta, tail):
         b = math.exp(-epsilon)
         q = 2 * delta * b / (1 - b + 2 * delta * b)
         values = list(range(0, size+1))
@@ -48,64 +48,21 @@ def make_left_ump_test(VectorDomain[AllDomain[float]]):
         values = np.array(values)
         phi = ptulap(t=values-s, m=0, b=b, q=q)
         
-        return phi
+        if tail == 'left':
+            return phi
+        elif tail == 'right':
+            return 1 - phi
 
     return make_user_postprocessor(
         function,
-        DI=VectorDomain[AllDomain[float]],
-        DO=AllDomain[float]
-    )
-
-def make_right_ump_test(VectorDomain[AllDomain[float]]):
-
-    def function(theta, size, alpha, epsilon, delta):
-        b = math.exp(-epsilon)
-        q = 2 * delta * b / (1 - b + 2 * delta * b)
-        values = list(range(0, size+1))
-        B = binom.pmf(k=values, n=size, p=theta)
-        """_summary_
-
-        Args:
-            theta (_type_): true probability of binomial distribution
-            size (_type_): sample size
-            alpha (_type_): significance level alpha
-            epsilon (_type_), delta (_type_): DP parameters
-
-        Returns:
-            _type_: _description_
-        """    
-
-        def obj(s):
-            values = np.array(values)
-            phi = ptulap(t=values-s, m=0, b=b, q=q)
-            return np.dot(B, phi) - alpha
-
-
-        lower = -1
-        upper = 1
-
-        while obj(lower) < 0:
-            lower *= 2
-        while obj(upper) > 0:
-            upper *= 2
-        root = scipy.optimize.brentq(obj, lower, upper)  # scipy.optimize.brentq(function, min, max)
-        s = root
-        values = np.array(values)
-        phi = ptulap(t=values-s, m=0, b=b, q=q)
-        
-        return phi
-
-    return make_user_postprocessor(
-        function,
-        DI=VectorDomain[AllDomain[float]],
-        DO=AllDomain[float]
+        DI = VectorDomain[AllDomain[float], AllDomain[str]],
+        DO = VectorDomain[AllDomain[float]]
     )
 
 
-
-def make_right_pvalue(VectorDomain[AllDomain[float]]):
+def make_oneside_pvalue(VectorDomain[AllDomain[float], AllDomain[str]]):
         
-    def function(Z, theta, size, b, q):
+    def function(Z, theta, size, b, q, tail):
         """_summary_
         Right tailed p-value
         Args:
@@ -125,7 +82,10 @@ def make_right_pvalue(VectorDomain[AllDomain[float]]):
             B = binom.pmf(k=values, n=size, p=theta)
 
             for r in range(reps):
-                F = ptulap(t=values-Z[r], m=0, b=b, q=q)
+                if tail == 'right':
+                    F = ptulap(t=values-Z[r], m=0, b=b, q=q)
+                elif tail == 'left':
+                    F = 1 - ptulap(t=values-Z[r], m=0, b=b, q=q)
                 pval[r] = np.dot(F.T, B)
             return pval
         
@@ -133,61 +93,26 @@ def make_right_pvalue(VectorDomain[AllDomain[float]]):
             pval = [0]
             values = np.array(range(size))
             B = binom.pmf(k=values, n=size, p=theta)
-            F = ptulap(t=values-Z, m=0, b=b, q=q)
+            if tail == 'right':
+                F = ptulap(t=values-Z, m=0, b=b, q=q)
+            elif tail == 'left':
+                F = 1 - ptulap(t=values-Z, m=0, b=b, q=q)
             pval[0] = np.dot(F.T, B)
             return pval[0]
     
     return make_user_postprocessor(
         function, 
-        DI = VectorDomain[AllDomain[float]]
-        DO = AllDomain[float]
+        DI = VectorDomain[AllDomain[float], AllDomain[str]]
+        DO = VectorDomain[AllDomain[float]]
     )
 
-def make_left_pvalue(VectorDomain[AllDomain[float]]):
-         
-    def function(Z, theta, size, b, q):
-        """_summary_
-        Left tailed p-value
-        Args:
-            Z (_type_): tulap random variables
-            theta (_type_): true probability of binomial distribution
-            size (_type_): number of trials
-            b (_type_), q (_type_): tulap parameters
-            
-        Returns:
 
-        """   
-        reps = Z.size  # sample size
-        if reps > 1:
-            pval = [0] * reps
-            values = np.array(range(size))
-
-            B = binom.pmf(k=values, n=size, p=theta)
-
-            for r in range(reps):
-                F = 1 - ptulap(t=values-Z[r], m=0, b=b, q=q)
-                pval[r] = np.dot(F.T, B)
-            return pval
-        
-        else:
-            pval = [0]
-            values = np.array(range(size))
-            B = binom.pmf(k=values, n=size, p=theta)
-            F = 1 - ptulap(t=values-Z, m=0, b=b, q=q)
-            pval[0] = np.dot(F.T, B)
-            return pval[0]
-    
-    return make_user_postprocessor(
-        function, 
-        DI = VectorDomain[AllDomain[Z, theta, size, b, q]]
-        DO=AllDomain[Z, theta, size, b, q]
-    )
-    
 def make_twoside_pvalue(VectorDomain[AllDomain[float]]):
     
     def function(Z, theta, size, b, q):
         T = abs(Z - size * theta)
-        pval = np.subtract(make_right_pvalue(Z=T+size*theta, size=size, theta=theta, b=b, q=q), make_right_pvalue(Z=size*theta-T, size=size, theta=theta, b=b, q=q))
+        pval = np.subtract(make_oneside_pvalue(Z=T+size*theta, size=size, theta=theta, b=b, q=q, tail='right'), 
+                           make_oneside_pvalue(Z=size*theta-T, size=size, theta=theta, b=b, q=q, tail='right'))
 
         return pval+1
     
@@ -199,7 +124,7 @@ def make_twoside_pvalue(VectorDomain[AllDomain[float]]):
             
 
 
-def make_CI_lower(VectorDomain[AllDomain[float]]):
+def make_CI(VectorDomain[AllDomain[float], AllDomain[str]]):
     from scipy.optimize import OptimizeResult, minimize_scalar
 
     def custmin(fun, bracket, args=(), 
@@ -249,76 +174,17 @@ def make_CI_lower(VectorDomain[AllDomain[float]]):
         return OptimizeResult(fun=besty, x=bestx, nit=niter,
                         nfev=funcalls, success=(niter > 1)) 
           
-    def function(alpha, Z, size, b, q):
-        CIobj = lambda x: ((make_right_pvalue(Z=Z, size=size, theta=x, b=b, q=q)) - alpha)
+    def function(alpha, Z, size, b, q, tail):
+        if tail == 'lower':
+            CIobj = lambda x: ((make_oneside_pvalue(Z=Z, size=size, theta=x, b=b, q=q, tail='right')) - alpha)
+        elif tail == 'upper':
+            CIobj = lambda x: ((make_oneside_pvalue(Z=Z, size=size, theta=x, b=b, q=q, tail='right')) - (1-alpha))
         L = minimize_scalar(fun=CIobj, method=custmin, bracket=(0, 1))    # args already set in CIobj
         return L.x
     
     return make_user_postprocessor(
         function, 
-        DI = VectorDomain[AllDomain[float]]
-        DO = AllDomain[float]
-    )
-
-def make_CI_upper(VectorDomain[AllDomain[float]]):
-    from scipy.optimize import OptimizeResult, minimize_scalar
-    
-    def custmin(fun, bracket, args=(), 
-                maxfev=None, stepsize=1e-3, maxiter=500, callback=None, **options):
-        print("binary search, stepsize = ", 1e-3)
-        lower = bracket[0]
-        upper = bracket[1]
-        
-        funcalls = 1
-        niter = 0
-        
-        mid = (lower + upper) / 2.0
-        bestx = mid
-        besty = fun(mid, *args)
-        min_diff = 1e-6
-        
-        while lower <= upper:
-            mid = (lower + upper) / 2.00
-            # print("low: ", lower, "up: ", upper)
-            # print("mid: ", mid)
-            # print("diff: ", fun(mid, *args))
-            funcalls += 1
-            niter += 1
-            if fun(mid, *args) == 0:
-                # print("diff = 0")
-                besty = fun(mid, *args)
-                bestx = mid
-                return OptimizeResult(fun=besty, x=bestx, nit=niter,
-                            nfev=funcalls, success=(niter > 1))
-            elif abs(fun(mid, *args)) <= min_diff:
-                # print("diff <= min_diff")
-                besty = fun(mid, *args)
-                bestx = mid
-                return OptimizeResult(fun=besty, x=bestx, nit=niter,
-                            nfev=funcalls, success=(niter > 1))
-            elif fun(mid, *args) > 0:      # mid > alpha
-                # print("diff > 0")
-                upper = mid-stepsize
-            elif fun(mid, *args) < 0:      # mid < alpha
-                # print("diff < 0")
-                lower = mid+stepsize
-                
-        bestx = mid
-        besty = fun(mid, *args)
-        # print("while loop break")
-        # print("low and up: ", lower, upper)
-        return OptimizeResult(fun=besty, x=bestx, nit=niter,
-                        nfev=funcalls, success=(niter > 1))
-
-          
-    def function(alpha, Z, size, b, q):
-        CIobj = lambda x: ((make_right_pvalue(Z=Z, size=size, theta=x, b=b, q=q)) - (1-alpha))
-        L = minimize_scalar(fun=CIobj, method=custmin, bracket=(0, 1))    # args already set in CIobj
-        return L.x
-    
-    return make_user_postprocessor(
-        function, 
-        DI = VectorDomain[AllDomain[float]]
+        DI = VectorDomain[AllDomain[float], AllDomain[float]]
         DO = AllDomain[float]
     )
 

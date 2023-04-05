@@ -45,7 +45,6 @@ def pvalRight(Z, size, theta, b, q):
     else:
         pval = [0]
         values = np.array(range(size))
-
         B = binom.pmf(k=values, n=size, p=theta)
         F = ptulap(t=values-Z, m=0, b=b, q=q)
         pval[0] = np.dot(F.T, B)
@@ -54,7 +53,6 @@ def pvalRight(Z, size, theta, b, q):
 def pvalLeft(Z, size, theta, b, q):
     reps = Z.size
     if reps > 1:
-        reps = len(Z)
         pval = [0] * reps
         values = range(size+1)
 

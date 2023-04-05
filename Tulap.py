@@ -3,7 +3,6 @@ import math
 import numpy.random as random
 import scipy
 from scipy.stats import norm, geom, uniform
-from torch import log
 
 '''
 m - real number

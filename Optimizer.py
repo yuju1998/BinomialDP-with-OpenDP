@@ -3,7 +3,8 @@ import numpy as np
 from pvalue import pvalLeft, pvalRight
 
 def custmin(fun, bracket, args=(), 
-            maxfev=None, stepsize=1e-10, maxiter=500, callback=None, **options):
+            maxfev=None, stepsize=1e-3, maxiter=500, callback=None, **options):
+    #print("binary search, stepsize = ", 1e-3)
     lower = bracket[0]
     upper = bracket[1]
     
@@ -50,8 +51,9 @@ def custmin(fun, bracket, args=(),
 
     
     
-# def custmin(fun, bracket, args=(), maxfev=None, stepsize=0.01,
+# def custmin(fun, bracket, args=(), maxfev=None, stepsize=0.001,
 #         maxiter=500, callback=None, **options):
+#     #print("linear search, stepsize = ",1e-3)
 #     bestx = (bracket[1] + bracket[0]) / 2.0
 #     besty = fun(bestx)
 #     funcalls = 1

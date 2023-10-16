@@ -51,7 +51,7 @@ def approx_trials(n, prob=1, alpha=0):
     n_trials = ((-b + math.sqrt(b**2 - (4*a*c))) / (2*a))
     return int(round(n_trials))
 
-# generate random samples from Tulap distribution
+# generate random samples from Tulap distribution using rejection sampling
 def rTulap(n, m=0, b=0, q=0):
     # q represents truncation
     if q >= 0:
@@ -95,5 +95,18 @@ def rTulap(n, m=0, b=0, q=0):
     return samples
 
 
-def varTulap(b):
-    return ((2*b) / (1-b)**2) + (1 / 12)
+# generate random samples from Tulap distribution using inverse transform sampling
+def rTulap_inv(epsilon, delta):
+    def qCND(u, f, c):         # CND quantile function for f
+        if u < c:
+            return qCND(1 - f(u), f, c) - 1
+        elif c <= u <= 1-c: # the linear function 
+            return (u - 1/2)/(1 - 2*c)
+        else:
+            return qCND(f(1-u),f ,c) + 1  
+    unif = np.random.uniform(0, 1)
+    c = (1-delta) / (1 + math.exp(epsilon))
+    f = max(0, 1 - delta - math.exp(epsilon) * unif, math.exp(-epsilon) * (1 - delta - unif))
+    samples = qCND(unif, f, c)
+    return samples
+
